@@ -1,0 +1,169 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  SOCIAL_ASSISTANT
+}
+
+enum SocialSituation {
+  VULNERABLE
+  STABLE
+  CRITICAL
+}
+
+enum VisitStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELED
+}
+
+enum ReferralStatus {
+  PENDING
+  ACTIVE
+  RESOLVED
+  ARCHIVED
+}
+
+enum ReportType {
+  SOCIAL_REPORT
+  FAMILY_REPORT
+  MONTHLY_SUMMARY
+}
+
+enum NotificationType {
+  APPOINTMENT
+  VISIT
+  REFERRAL
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  password      String
+  role          Role           @default(SOCIAL_ASSISTANT)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  appointments  Appointment[]
+  visits        Visit[]
+  referrals     Referral[]
+  reports       Report[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Family {
+  id              Int             @id @default(autoincrement())
+  nameResponsible String          @map("name_responsible")
+  cpf             String          @unique
+  phone           String
+  address         String
+  familyIncome    Float           @map("family_income")
+  memberCount     Int             @map("member_count")
+  socialSituation SocialSituation @default(VULNERABLE) @map("social_situation")
+  notes           String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+  members         Person[]
+  appointments    Appointment[]
+  visits          Visit[]
+  referrals       Referral[]
+  reports         Report[]
+
+  @@map("families")
+}
+
+model Person {
+  id               Int      @id @default(autoincrement())
+  familyId         Int      @map("family_id")
+  family           Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  name             String
+  age              Int
+  schooling        String
+  employmentStatus String   @map("employment_status")
+  documents        String
+  specialNeeds     String   @map("special_needs")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@map("people")
+}
+
+model Appointment {
+  id          Int      @id @default(autoincrement())
+  familyId    Int      @map("family_id")
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  userId      Int      @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime
+  type        String
+  description String
+  attachments String?
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("appointments")
+}
+
+model Visit {
+  id             Int         @id @default(autoincrement())
+  familyId       Int         @map("family_id")
+  family         Family      @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  userId         Int         @map("user_id")
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date           DateTime
+  status         VisitStatus @default(SCHEDULED)
+  situationFound String?     @map("situation_found")
+  photos         String?
+  notes          String?
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  @@map("visits")
+}
+
+model Referral {
+  id             Int            @id @default(autoincrement())
+  familyId       Int            @map("family_id")
+  family         Family         @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  userId         Int            @map("user_id")
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  destination    String
+  status         ReferralStatus @default(PENDING)
+  description    String
+  feedbackNotes  String?        @map("feedback_notes")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  @@map("referrals")
+}
+
+model Report {
+  id        Int        @id @default(autoincrement())
+  familyId  Int        @map("family_id")
+  family    Family     @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  userId    Int        @map("user_id")
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  type      ReportType
+  content   String
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  @@map("reports")
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int              @map("user_id")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  isRead    Boolean          @default(false) @map("is_read")
+  type      NotificationType
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
